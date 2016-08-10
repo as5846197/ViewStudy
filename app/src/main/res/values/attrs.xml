@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <declare-styleable name="PieChart">
-        <attr name="name" format="string" />
-        <attr name="percentDecimal" format="integer" />
-        <attr name="textSize" format="dimension" />
+    <declare-styleable name="IQiYiLoading">
+        <attr name="triangleColor" format="color" />
+        <attr name="circleColor" format="color" />
+        <attr name="duration" format="integer" />
+        <attr name="circleWidth" format="dimension" />
     </declare-styleable>
 </resources>
