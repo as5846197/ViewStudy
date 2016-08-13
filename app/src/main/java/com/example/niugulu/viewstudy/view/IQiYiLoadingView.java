@@ -27,23 +27,26 @@ import com.example.niugulu.viewstudy.Utils;
 public class IQiYiLoadingView extends View {
     private static final String DEFAULT_COLOR = "#00ba9b";
     private static final int DEFAULT_SIZE = 50;
-    private static final int DRAW_CIRCLE = 10001;
-    private static final int ROTATE_TRIANGLE = 10002;
+    private static final int DRAW_CIRCLE = 10001; //状态标记  画出圆形和三角形 执行画出圆形的动画
+    private static final int ROTATE_TRIANGLE = 10002; //状态标记  执行旋转三角形和收回圆形的动画
     private Context mContext;
     private Paint trianglePaint;
     private Paint circlePaint;
-    private float paintStrokeWidth = 1;
-    private long duration = 800;
+    private float paintStrokeWidth = 1; // 设置圆形的宽度
+    private long duration = 800;    //执行时间
     private int mWidth;
     private int mHeight;
     private Path trianglePath;
     private Path circlePath;
-    private Point p1, p2, p3;
-    private ValueAnimator animator;
+    private Path dst;  //由pathMeasure计算后的path
+    private Point p1, p2, p3;  //确定三角形的三个点
+    private ValueAnimator animator;     //属性动画  主要是获取0-1的值来执行动画
     private float mAnimatorValue = 0;
-    private float circleCenter = 0;
     private int mCurrentState = 0;
-    private int radius = 0;
+    private int radius = 0;  //圆的半径
+
+    private float startSegment; //圆开始画的长度
+    private PathMeasure mMeasure;
 
     private int triangleColor = -1;
     private int circleColor = -1;
@@ -52,6 +55,8 @@ public class IQiYiLoadingView extends View {
     public IQiYiLoadingView(Context context) {
         super(context);
         init();
+        initAnimation();
+        animator.start();
     }
 
     public IQiYiLoadingView(Context context, AttributeSet attrs) {
@@ -66,8 +71,13 @@ public class IQiYiLoadingView extends View {
         super(context, attrs, defStyleAttr);
         mContext = context;
         init(attrs);
+        initAnimation();
+        animator.start();
     }
 
+    /**
+     * 获取声明的属性
+     */
     private void init(AttributeSet attrs) {
         TypedArray array = mContext.obtainStyledAttributes(attrs, R.styleable.IQiYiLoading);
         int n = array.getIndexCount();
@@ -90,9 +100,14 @@ public class IQiYiLoadingView extends View {
                     break;
             }
         }
+        array.recycle();
+        array = null;
         init();
     }
 
+    /**
+     * 初始化画笔还有状态
+     */
     private void init() {
         trianglePaint = new Paint();
         circlePaint = new Paint();
@@ -107,6 +122,9 @@ public class IQiYiLoadingView extends View {
         mCurrentState = DRAW_CIRCLE;
     }
 
+    /**
+     * 设置wrap_content的时候宽高为默认值
+     */
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -132,7 +150,11 @@ public class IQiYiLoadingView extends View {
         initPath();
     }
 
+    /**
+     * 初始化路径 三角形和外圈圆
+     */
     private void initPath() {
+        dst = new Path();
         trianglePath = new Path();
         circlePath = new Path();
         p1 = new Point();
@@ -145,28 +167,31 @@ public class IQiYiLoadingView extends View {
         p2.y = radius / 2;
         p3.x = (int) (radius / 2 / Math.sin(60 * Math.PI / 180));
         p3.y = 0;
-        circleCenter = p3.x - (float) (radius / 2 / Math.cos(30 * Math.PI / 180));
         trianglePath.moveTo(p1.x, p1.y);
         trianglePath.lineTo(p2.x, p2.y);
         trianglePath.lineTo(p3.x, p3.y);
         RectF circleRect = new RectF(-radius, -radius, radius, radius);
         circlePath.addArc(circleRect, 268, 358);
+        mMeasure = new PathMeasure(circlePath, false);
         trianglePath.close();
 
 
     }
 
+    /**
+     * 这里主要涉及到的知识就是对path进行测量
+     */
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         canvas.translate(mWidth / 2, mHeight / 2);
-        PathMeasure mMeasure = new PathMeasure(circlePath, false);
-        Path dst = new Path();
+        dst.reset();
         switch (mCurrentState) {
             case DRAW_CIRCLE:
+                startSegment = (float) (mMeasure.getLength() / 5 * ((0.3 - mAnimatorValue) > 0 ? (0.3 - mAnimatorValue) : 0));
                 trianglePaint.setStyle(Paint.Style.FILL_AND_STROKE);
                 canvas.drawPath(trianglePath, trianglePaint);
-                mMeasure.getSegment(0, mMeasure.getLength() * mAnimatorValue, dst, true);
+                mMeasure.getSegment(startSegment, mMeasure.getLength() * mAnimatorValue, dst, true);
                 canvas.drawPath(dst, circlePaint);
                 break;
             case ROTATE_TRIANGLE:
@@ -184,6 +209,9 @@ public class IQiYiLoadingView extends View {
 
     }
 
+    /**
+     * 属性动画的设置
+     */
     private void initAnimation() {
         TimeInterpolator timeInterpolator = new AccelerateDecelerateInterpolator();
         animator = ValueAnimator.ofFloat(0, 1).setDuration(duration);
