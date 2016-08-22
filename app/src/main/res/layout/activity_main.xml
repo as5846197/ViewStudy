@@ -10,7 +10,7 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.example.niugulu.viewstudy.MainActivity">
 
-    <com.example.niugulu.viewstudy.view.IQiYiLoadingView
-        android:layout_width="50dp"
-        android:layout_height="50dp" />
+    <com.example.niugulu.viewstudy.view.LeafLoadingView
+        android:layout_width="match_parent"
+        android:layout_height="300dp" />
 </RelativeLayout>
