@@ -80,6 +80,8 @@ public class LeafLoadingView extends View {
     private int mLeafHeight;
     private int mLeafFlyTime;
 
+    private Bitmap outBorder;
+
     public LeafLoadingView(Context context) {
         super(context);
     }
@@ -312,6 +314,24 @@ public class LeafLoadingView extends View {
 //            leaf.startTime
             return leaf;
         }
+    }
+
+    /**
+     * 绘制形状
+     * @return
+     */
+    public Bitmap getBitmap()
+    {
+        Bitmap bitmap = Bitmap.createBitmap(mWidth, mHeight,
+                Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.BLACK);
+        canvas.translate(mWidth / 10, mHeight / 2);
+
+        canvas.drawArc(outerCircle, 90, 180, true, outerPaint);
+        canvas.drawRect(outerRectangle, outerPaint);
+        return bitmap;
     }
 
 
