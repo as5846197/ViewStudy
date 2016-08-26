@@ -41,6 +41,8 @@ public class LeafLoadingView extends View {
     private static final int NORMAL_AMPLITUDE = 1;
     private static final int HIGH_AMPLITUDE = 2;
 
+    private static final int DEFAULT_AMPLITUDE = 20;
+
     // 叶子飘动一个周期所花的时间
     private static final int LEAF_FLOAT_TIME = 2000;
 
@@ -58,7 +60,7 @@ public class LeafLoadingView extends View {
     private int mHeight;
     private float textHeight;
 
-    //外部园半径 内部园半径  风扇背景的半径
+    //外部圆半径 内部圆半径  风扇背景的半径
     private float outerRadius;
     private float innerRadius;
     private float fanBgRadius;
@@ -149,6 +151,7 @@ public class LeafLoadingView extends View {
         textHeight = (-fontMetrics.ascent - fontMetrics.descent) / 2;
 
         mLeafFlyTime = LEAF_FLOAT_TIME;
+        mAmplitudeDisparity = DEFAULT_AMPLITUDE;
     }
 
     private void initValueAnimator() {
@@ -288,6 +291,7 @@ public class LeafLoadingView extends View {
                 int angle = (int) (rotateFraction * 360);
                 int rotate = leaf.rotateDirection == 0 ? angle + leaf.rotateAngle : -angle
                         + leaf.rotateAngle;
+
                 Matrix matrix = new Matrix();
                 matrix.reset();
                 matrix.postTranslate(leaf.x, leaf.y);
@@ -304,6 +308,7 @@ public class LeafLoadingView extends View {
         canvas.restore();
     }
 
+    //获取叶子当前的位置
     public void getLocation(Leaf leaf, long currentTime) {
         long intervalTime = currentTime - leaf.startTime;
         if (intervalTime < 0) {
@@ -317,10 +322,12 @@ public class LeafLoadingView extends View {
         leaf.y = getLeafY(leaf);
     }
 
+    //获取叶子x坐标
     public float getLeafX(float fraction) {
         return mProgressWidth * (1 - fraction);
     }
 
+    //获取叶子y坐标
     public float getLeafY(Leaf leaf) {
         float w = (float) (2 * Math.PI / mProgressWidth);
         float a = outerRadius / 2;
@@ -342,6 +349,8 @@ public class LeafLoadingView extends View {
         return (float) (a * Math.sin((w * leaf.x))) - mLeafHeight / 2 + outerRadius;
     }
 
+
+    //先填充半圆
     private void drawInnerCircle(Canvas canvas) {
         firstStepTime = innerRadius / (innerRadius + 7 * outerRadius);
         if (currentProgress > firstStepTime) {
@@ -352,6 +361,7 @@ public class LeafLoadingView extends View {
         }
     }
 
+    //填充剩下的长方形
     private void drawInnerRectangle(Canvas canvas) {
         secondStepTime = 1 - firstStepTime;
         if (currentProgress >= 1) {
@@ -365,6 +375,7 @@ public class LeafLoadingView extends View {
         }
     }
 
+    //结束时动画 展示“100%”字样
     private void showCompletedText(Canvas canvas) {
         canvas.drawRect(-1, -innerRadius, (7 + completedProgress) * outerRadius, innerRadius, innerPaint);
         canvas.drawArc(fanWhiteRect, 90, 360, true, fanPaint);
@@ -385,6 +396,7 @@ public class LeafLoadingView extends View {
 
     }
 
+    //画扇叶
     private void drawFan(Canvas canvas, float completedProgress, boolean isNeedRotate) {
         canvas.save();
         if (isNeedRotate) {
@@ -467,7 +479,7 @@ public class LeafLoadingView extends View {
     }
 
     /**
-     * 绘制形状
+     * 绘制外部背景
      *
      * @return
      */

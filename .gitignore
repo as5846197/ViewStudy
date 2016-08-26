@@ -9,3 +9,4 @@ build
 *.project
 *.project.properties
 local.properties
+/.gitignore
