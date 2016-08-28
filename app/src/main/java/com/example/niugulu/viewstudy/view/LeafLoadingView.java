@@ -89,6 +89,12 @@ public class LeafLoadingView extends View {
     private float currentProgress;
     private float completedProgress;
 
+    //计算时间增量和progress增量
+    private long preTime ;
+    private long addTime;
+    private float addProgress;
+    private float preProgress;
+
     //先填充半圆的进度 和 长方形的时间
     private float firstStepTime;
     private float secondStepTime;
@@ -189,10 +195,9 @@ public class LeafLoadingView extends View {
         textHeight = (-fontMetrics.ascent - fontMetrics.descent) / 2;
 
         leafInfos = new LeafFactory().generateLeafs();
+        preTime = System.currentTimeMillis();
     }
 
-    private float addProgress;
-    private float preProgress;
     private void initValueAnimator() {
         completedAnimator = ValueAnimator.ofFloat(0, 1);
         progressAnimator = ValueAnimator.ofFloat(0,1);
@@ -535,16 +540,15 @@ public class LeafLoadingView extends View {
     public void setAmplitudeDisparity(float mAmplitudeDisparity) {
         this.mAmplitudeDisparity = mAmplitudeDisparity;
     }
-    private long preTime = System.currentTimeMillis();
-    private long addTime;
+
     public void setCurrentProgress(int currentProgress) {
         addProgress = currentProgress/maxProgress-this.currentProgress;
         preProgress = this.currentProgress;
-        long displayTime = 0;
+        long leftTime = 0;
         if (progressAnimator.getCurrentPlayTime()<addTime) {
-            displayTime  = addTime -progressAnimator.getCurrentPlayTime();
+            leftTime  = addTime -progressAnimator.getCurrentPlayTime();
         }
-        addTime = System.currentTimeMillis()-preTime+displayTime;
+        addTime = System.currentTimeMillis()-preTime+leftTime;
         preTime = System.currentTimeMillis();
         progressAnimator.setDuration(addTime);
         progressAnimator.start();
