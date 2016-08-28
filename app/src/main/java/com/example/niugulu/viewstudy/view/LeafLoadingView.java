@@ -3,6 +3,7 @@ package com.example.niugulu.viewstudy.view;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -14,10 +15,12 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateInterpolator;
 
 import com.example.niugulu.viewstudy.R;
+import com.example.niugulu.viewstudy.Utils;
 
 import java.lang.ref.WeakReference;
 import java.util.LinkedList;
@@ -44,7 +47,8 @@ public class LeafLoadingView extends View {
     private static final int DEFAULT_AMPLITUDE = 20;
 
     // 叶子飘动一个周期所花的时间
-    private static final int LEAF_FLOAT_TIME = 2000;
+    private static final int LEAF_FLY_TIME = 2000;
+    private static final int LEAF_ROTATE_TIME = 2000;
 
     private Resources mResources;
 
@@ -77,7 +81,7 @@ public class LeafLoadingView extends View {
     private Path nPath;
 
     // 定义结束的属性动画
-    private ValueAnimator valueAnimator;
+    private ValueAnimator progressAnimator;
     private ValueAnimator completedAnimator;
 
     //进度值
@@ -93,9 +97,10 @@ public class LeafLoadingView extends View {
     private Bitmap mLeafBitmap;
     private int mLeafWidth;
     private int mLeafHeight;
-    private int mLeafFlyTime;
+    private int mLeafFlyTime = LEAF_FLY_TIME;
+    private int mLeafRotateTime = LEAF_ROTATE_TIME;
     private int mAddTime;
-    private float mAmplitudeDisparity;
+    private float mAmplitudeDisparity = DEFAULT_AMPLITUDE;
 
     //判断是否加载完毕 然后执行结束动画
     private boolean isFinished;
@@ -110,22 +115,55 @@ public class LeafLoadingView extends View {
 
     public LeafLoadingView(Context context) {
         super(context);
+        init();
+        initValueAnimator();
+        initBitmap();
     }
 
     public LeafLoadingView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        mResources = getResources();
-        init();
+        init(attrs,context);
         initValueAnimator();
         initBitmap();
-        leafInfos = new LeafFactory().generateLeafs();
     }
 
     public LeafLoadingView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        init(attrs,context);
+        initValueAnimator();
+        initBitmap();
+    }
+
+    private void init(AttributeSet attrs,Context context) {
+        TypedArray array = context.obtainStyledAttributes(attrs,R.styleable.LeafLoadingView);
+        int n = array.getIndexCount();
+        for (int i = 0; i < n; i++) {
+            int attr = array.getIndex(i);
+            switch (attr) {
+                case R.styleable.LeafLoadingView_maxProgress:
+                    maxProgress = array.getInt(attr,100);
+                    break;
+                case R.styleable.LeafLoadingView_amplitudeDisparity:
+                    mAmplitudeDisparity = array.getInt(attr, DEFAULT_AMPLITUDE);
+                    break;
+                case R.styleable.LeafLoadingView_leafFlyTime:
+                    mLeafFlyTime = array.getInt(attr, LEAF_FLY_TIME);
+                    break;
+                case R.styleable.LeafLoadingView_leafRotateTime:
+                    mLeafRotateTime = array.getInt(attr, LEAF_ROTATE_TIME);
+                    break;
+                default:
+                    break;
+            }
+        }
+        array.recycle();
+        array=null;
+        init();
     }
 
     private void init() {
+        mResources = getResources();
+
         innerPaint = new Paint();
         innerPaint.setAntiAlias(true);
         innerPaint.setColor(DEFAULT_BG_INNER);  //抗锯齿
@@ -150,23 +188,21 @@ public class LeafLoadingView extends View {
         Paint.FontMetrics fontMetrics = textPaint.getFontMetrics();
         textHeight = (-fontMetrics.ascent - fontMetrics.descent) / 2;
 
-        mLeafFlyTime = LEAF_FLOAT_TIME;
-        mAmplitudeDisparity = DEFAULT_AMPLITUDE;
+        leafInfos = new LeafFactory().generateLeafs();
     }
 
+    private float addProgress;
+    private float preProgress;
     private void initValueAnimator() {
-        valueAnimator = ValueAnimator.ofFloat(0, 100);
         completedAnimator = ValueAnimator.ofFloat(0, 1);
-        valueAnimator.setInterpolator(new AccelerateInterpolator());
-        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        progressAnimator = ValueAnimator.ofFloat(0,1);
+        progressAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                currentProgress = (float) animation.getAnimatedValue() / maxProgress;
+                currentProgress = preProgress+addProgress * (float) animation.getAnimatedValue();
                 invalidate();
             }
         });
-        valueAnimator.setDuration(5000);
-        valueAnimator.start();
         completedAnimator.setDuration(500);
         completedAnimator.setInterpolator(new AccelerateInterpolator());
         completedAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
@@ -244,7 +280,7 @@ public class LeafLoadingView extends View {
                 Canvas.CLIP_TO_LAYER_SAVE_FLAG);
 
         canvas.drawBitmap(outBorderBitmap, 0, 0, outerPaint);
-//        canvas.translate(mWidth / 10, mHeight / 2);
+        //        canvas.translate(mWidth / 10, mHeight / 2);
         drawLeaf(canvas);
         canvas.restoreToCount(sc);
 
@@ -272,6 +308,8 @@ public class LeafLoadingView extends View {
             showCompletedText(canvas);
         }
 
+        postInvalidate();
+
     }
 
     /**
@@ -286,8 +324,8 @@ public class LeafLoadingView extends View {
             if (currentTime > leaf.startTime && leaf.startTime != 0) {
                 getLocation(leaf, currentTime);
                 // 通过时间关联旋转角度，则可以直接通过修改LEAF_ROTATE_TIME调节叶子旋转快慢
-                float rotateFraction = ((currentTime - leaf.startTime) % mLeafFlyTime)
-                        / (float) mLeafFlyTime;
+                float rotateFraction = ((currentTime - leaf.startTime) % mLeafRotateTime)
+                        / (float) mLeafRotateTime;
                 int angle = (int) (rotateFraction * 360);
                 int rotate = leaf.rotateDirection == 0 ? angle + leaf.rotateAngle : -angle
                         + leaf.rotateAngle;
@@ -494,5 +532,46 @@ public class LeafLoadingView extends View {
         return bitmap;
     }
 
+    public void setAmplitudeDisparity(float mAmplitudeDisparity) {
+        this.mAmplitudeDisparity = mAmplitudeDisparity;
+    }
+    private long preTime = System.currentTimeMillis();
+    private long addTime;
+    public void setCurrentProgress(int currentProgress) {
+        addProgress = currentProgress/maxProgress-this.currentProgress;
+        preProgress = this.currentProgress;
+        long displayTime = 0;
+        if (progressAnimator.getCurrentPlayTime()<addTime) {
+            displayTime  = addTime -progressAnimator.getCurrentPlayTime();
+        }
+        addTime = System.currentTimeMillis()-preTime+displayTime;
+        preTime = System.currentTimeMillis();
+        progressAnimator.setDuration(addTime);
+        progressAnimator.start();
+
+    }
+
+    /**
+     * 设置叶子飘完一个周期所花的时间
+     *
+     * @param time
+     */
+    public void setLeafFlyTime(int time) {
+        this.mLeafFlyTime = time;
+    }
+
+    /**
+     * 设置叶子旋转一周所花的时间
+     *
+     * @param time
+     */
+    public void setLeafRotateTime(int time) {
+        this.mLeafRotateTime = time;
+    }
+
+    public void setMaxProgress(int maxProgress) {
+        this.maxProgress = maxProgress;
+    }
 
 }
+

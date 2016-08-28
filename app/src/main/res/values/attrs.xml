@@ -6,4 +6,10 @@
         <attr name="duration" format="integer" />
         <attr name="circleWidth" format="dimension" />
     </declare-styleable>
+    <declare-styleable name="LeafLoadingView">
+        <attr name="maxProgress" format="integer"/>
+        <attr name="leafRotateTime" format="integer"/>
+        <attr name="leafFlyTime" format="integer"/>
+        <attr name="amplitudeDisparity" format="integer"/>
+    </declare-styleable>
 </resources>

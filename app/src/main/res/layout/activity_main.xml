@@ -11,6 +11,7 @@
     tools:context="com.example.niugulu.viewstudy.MainActivity">
 
     <com.example.niugulu.viewstudy.view.LeafLoadingView
+        android:id="@+id/loading_view"
         android:layout_width="match_parent"
         android:layout_height="300dp" />
 </RelativeLayout>
