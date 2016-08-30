@@ -90,14 +90,14 @@ public class LeafLoadingView extends View {
     private float completedProgress;
 
     //计算时间增量和progress增量
-    private long preTime ;
+    private long preTime;
     private long addTime;
     private float addProgress;
     private float preProgress;
 
-    //先填充半圆的进度 和 长方形的时间
-    private float firstStepTime;
-    private float secondStepTime;
+    //先填充半圆的进度 和 后半程矩形的进度
+    private float firstStepProgress;
+    private float secondStepProgress;
 
     //和叶片相关
     private Bitmap mLeafBitmap;
@@ -128,26 +128,26 @@ public class LeafLoadingView extends View {
 
     public LeafLoadingView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(attrs,context);
+        init(attrs, context);
         initValueAnimator();
         initBitmap();
     }
 
     public LeafLoadingView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init(attrs,context);
+        init(attrs, context);
         initValueAnimator();
         initBitmap();
     }
 
-    private void init(AttributeSet attrs,Context context) {
-        TypedArray array = context.obtainStyledAttributes(attrs,R.styleable.LeafLoadingView);
+    private void init(AttributeSet attrs, Context context) {
+        TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.LeafLoadingView);
         int n = array.getIndexCount();
         for (int i = 0; i < n; i++) {
             int attr = array.getIndex(i);
             switch (attr) {
                 case R.styleable.LeafLoadingView_maxProgress:
-                    maxProgress = array.getInt(attr,100);
+                    maxProgress = array.getInt(attr, 100);
                     break;
                 case R.styleable.LeafLoadingView_amplitudeDisparity:
                     mAmplitudeDisparity = array.getInt(attr, DEFAULT_AMPLITUDE);
@@ -163,7 +163,7 @@ public class LeafLoadingView extends View {
             }
         }
         array.recycle();
-        array=null;
+        array = null;
         init();
     }
 
@@ -200,12 +200,11 @@ public class LeafLoadingView extends View {
 
     private void initValueAnimator() {
         completedAnimator = ValueAnimator.ofFloat(0, 1);
-        progressAnimator = ValueAnimator.ofFloat(0,1);
+        progressAnimator = ValueAnimator.ofFloat(0, 1);
         progressAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                currentProgress = preProgress+addProgress * (float) animation.getAnimatedValue();
-                invalidate();
+                currentProgress = preProgress + addProgress * (float) animation.getAnimatedValue();
             }
         });
         completedAnimator.setDuration(500);
@@ -259,6 +258,9 @@ public class LeafLoadingView extends View {
 
         fanBgRadius = outerRadius * 0.8f;
 
+        firstStepProgress = innerRadius / (innerRadius + 7 * outerRadius);
+        secondStepProgress = 1 - firstStepProgress;
+
         mPath = new Path();
         nPath = new Path();
         mPath.moveTo(8 * outerRadius, -fanBgRadius);
@@ -305,15 +307,16 @@ public class LeafLoadingView extends View {
 
         //画扇叶
         canvas.save();
-        drawFan(canvas, 0, true);
+        drawFan(canvas, true);
         canvas.restore();
 
         //结束动画
         if (isFinished) {
             showCompletedText(canvas);
+        } else {
+            invalidate();
         }
 
-        postInvalidate();
 
     }
 
@@ -395,25 +398,23 @@ public class LeafLoadingView extends View {
 
     //先填充半圆
     private void drawInnerCircle(Canvas canvas) {
-        firstStepTime = innerRadius / (innerRadius + 7 * outerRadius);
-        if (currentProgress > firstStepTime) {
+        if (currentProgress > firstStepProgress) {
             canvas.drawArc(innerCircle, 90, 180, true, innerPaint);
             drawInnerRectangle(canvas);
         } else {
-            canvas.drawArc(innerCircle, 180 - 90 * currentProgress / firstStepTime, 180 * currentProgress / firstStepTime, false, innerPaint);
+            canvas.drawArc(innerCircle, 180 - 90 * currentProgress / firstStepProgress, 180 * currentProgress / firstStepProgress, false, innerPaint);
         }
     }
 
     //填充剩下的长方形
     private void drawInnerRectangle(Canvas canvas) {
-        secondStepTime = 1 - firstStepTime;
         if (currentProgress >= 1) {
             if (!isFinished) {
                 isFinished = true;
                 completedAnimator.start();
             }
         } else {
-            canvas.drawRect(-1, -innerRadius, 7 * outerRadius * (currentProgress - firstStepTime) / secondStepTime, innerRadius, innerPaint);
+            canvas.drawRect(-1, -innerRadius, 7 * outerRadius * (currentProgress - firstStepProgress) / secondStepProgress, innerRadius, innerPaint);
 
         }
     }
@@ -432,7 +433,7 @@ public class LeafLoadingView extends View {
             textPaint.setTextSize(60);
             canvas.drawText("100%", 8 * outerRadius, textHeight, textPaint);
         } else {
-            drawFan(canvas, completedProgress, false);
+            drawFan(canvas, false);
             textPaint.setTextSize(60 * completedProgress);
             canvas.drawText("100%", 8 * outerRadius, textHeight, textPaint);
         }
@@ -440,7 +441,7 @@ public class LeafLoadingView extends View {
     }
 
     //画扇叶
-    private void drawFan(Canvas canvas, float completedProgress, boolean isNeedRotate) {
+    private void drawFan(Canvas canvas, boolean isNeedRotate) {
         canvas.save();
         if (isNeedRotate) {
             canvas.rotate(-currentProgress * 360 * 5, 8 * outerRadius, 0);
@@ -542,13 +543,13 @@ public class LeafLoadingView extends View {
     }
 
     public void setCurrentProgress(int currentProgress) {
-        addProgress = currentProgress/maxProgress-this.currentProgress;
+        addProgress = currentProgress / maxProgress - this.currentProgress;
         preProgress = this.currentProgress;
         long leftTime = 0;
-        if (progressAnimator.getCurrentPlayTime()<addTime) {
-            leftTime  = addTime -progressAnimator.getCurrentPlayTime();
+        if (progressAnimator.getCurrentPlayTime() < addTime) {
+            leftTime = addTime - progressAnimator.getCurrentPlayTime();
         }
-        addTime = System.currentTimeMillis()-preTime+leftTime;
+        addTime = System.currentTimeMillis() - preTime + leftTime;
         preTime = System.currentTimeMillis();
         progressAnimator.setDuration(addTime);
         progressAnimator.start();
